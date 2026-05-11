@@ -4,16 +4,19 @@ import java.util.List;
 import java.util.Scanner;
 
 import com.librerymanagement.exception.LibraryException;
-import com.librerymanagement.manager.BookManager;
-import com.librerymanagement.manager.RentalManager;
-import com.librerymanagement.manager.UserManager;
 import com.librerymanagement.model.Book;
-import com.librerymanagement.util.FileUtil;
+import com.librerymanagement.repository.RepositoryBootstrap;
+import com.librerymanagement.service.BookService;
+import com.librerymanagement.service.BookServiceImpl;
+import com.librerymanagement.service.RentalService;
+import com.librerymanagement.service.RentalServiceImpl;
+import com.librerymanagement.service.UserService;
+import com.librerymanagement.service.UserServiceImpl;
 
 public class Main {
-	private static final BookManager bookManager = new BookManager();
-	private static final UserManager userManager = new UserManager();
-	private static final RentalManager rentalManager = new RentalManager();
+	private static final BookService bookService = new BookServiceImpl();
+	private static final UserService userService = new UserServiceImpl();
+	private static final RentalService rentalService = new RentalServiceImpl();
 	private static final Scanner scanner = new Scanner(System.in);
 
 	public static void main(String[] args) {
@@ -95,7 +98,8 @@ public class Main {
 		System.out.print("Enter category: ");
 		String category = scanner.nextLine();
 
-		bookManager.addBook(title, author, category);
+		String bookId = bookService.addBook(title, author, category);
+		System.out.println("Book added successfully. ID: " + bookId);
 	}
 
 	private static void updateBook() throws LibraryException {
@@ -108,36 +112,38 @@ public class Main {
 		System.out.print("Enter new category (press Enter to skip): ");
 		String category = scanner.nextLine();
 
-		bookManager.updateBook(bookId,
+		bookService.updateBook(bookId,
 			title.isEmpty() ? null : title,
 			author.isEmpty() ? null : author,
 			category.isEmpty() ? null : category);
+		System.out.println("Book updated successfully");
 	}
 
 	private static void deleteBook() throws LibraryException {
 		System.out.print("Enter book ID: ");
 		String bookId = scanner.nextLine();
-		bookManager.deleteBook(bookId);
+		bookService.deleteBook(bookId);
+		System.out.println("Book deleted successfully");
 	}
 
 	private static void checkAvailability() throws LibraryException {
 		System.out.print("Enter book ID: ");
 		String bookId = scanner.nextLine();
-		boolean available = bookManager.isAvailable(bookId);
+		boolean available = bookService.isAvailable(bookId);
 		System.out.println("Status: " + (available ? "Available" : "Not Available"));
 	}
 
 	private static void searchByTitle() {
 		System.out.print("Enter search term: ");
 		String query = scanner.nextLine();
-		List<Book> results = bookManager.searchByTitle(query);
+		List<Book> results = bookService.searchByTitle(query);
 		displayBooks(results);
 	}
 
 	private static void searchByCategory() {
 		System.out.print("Enter category: ");
 		String category = scanner.nextLine();
-		List<Book> results = bookManager.searchByCategory(category);
+		List<Book> results = bookService.searchByCategory(category);
 		displayBooks(results);
 	}
 
@@ -147,17 +153,19 @@ public class Main {
 		System.out.print("Enter user ID: ");
 		String userId = scanner.nextLine();
 
-		rentalManager.issueBook(bookId, userId);
+		String rentalId = rentalService.issueBook(bookId, userId);
+		System.out.println("Book issued successfully. Rental ID: " + rentalId);
 	}
 
 	private static void returnBook() throws LibraryException {
 		System.out.print("Enter rental ID: ");
 		String rentalId = scanner.nextLine();
-		rentalManager.returnBook(rentalId);
+		rentalService.returnBook(rentalId);
+		System.out.println("Book returned successfully");
 	}
 
 	private static void listAllBooks() {
-		List<Book> books = bookManager.getAllBooks();
+		List<Book> books = bookService.getAllBooks();
 		displayBooks(books);
 	}
 
@@ -166,7 +174,8 @@ public class Main {
 		String name = scanner.nextLine();
 		System.out.print("Enter ID card number: ");
 		String idCard = scanner.nextLine();
-		userManager.registerUser(name, idCard);
+		String userId = userService.registerUser(name, idCard);
+		System.out.println("User registered successfully. ID: " + userId);
 	}
 
 	private static void displayBooks(List<Book> books) {
@@ -211,11 +220,6 @@ public class Main {
 	}
 
 	private static void initializeFiles() {
-		String[] files = {"data/books.txt", "data/users.txt", "data/rentals.txt"};
-		for (String file : files) {
-			if (!FileUtil.fileExists(file)) {
-				FileUtil.createFile(file);
-			}
-		}
+		RepositoryBootstrap.ensureDataFiles();
 	}
 }

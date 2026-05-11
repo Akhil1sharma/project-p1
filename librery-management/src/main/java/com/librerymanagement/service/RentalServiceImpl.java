@@ -1,25 +1,36 @@
-package com.librerymanagement.manager;
+package com.librerymanagement.service;
 
 import com.librerymanagement.exception.BookUnavailableException;
 import com.librerymanagement.exception.InvalidOperationException;
 import com.librerymanagement.exception.LibraryException;
 import com.librerymanagement.model.Book;
 import com.librerymanagement.model.Rental;
-import com.librerymanagement.model.User;
-import com.librerymanagement.util.FileUtil;
+import com.librerymanagement.repository.FileRentalRepository;
+import com.librerymanagement.repository.RentalRepository;
 import com.librerymanagement.util.IDGenerator;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RentalManager {
-	private static final String FILE_PATH = "data/rentals.txt";
-	private final BookManager bookManager = new BookManager();
-	private final UserManager userManager = new UserManager();
+public class RentalServiceImpl implements RentalService {
+	private final RentalRepository rentalRepository;
+	private final BookService bookService;
+	private final UserService userService;
 
-	public void issueBook(String bookId, String userId) throws LibraryException {
-		Book book = bookManager.getBookById(bookId);
-		User user = userManager.getUserById(userId);
+	public RentalServiceImpl() {
+		this(new FileRentalRepository(), new BookServiceImpl(), new UserServiceImpl());
+	}
+
+	public RentalServiceImpl(RentalRepository rentalRepository, BookService bookService, UserService userService) {
+		this.rentalRepository = rentalRepository;
+		this.bookService = bookService;
+		this.userService = userService;
+	}
+
+	@Override
+	public String issueBook(String bookId, String userId) throws LibraryException {
+		Book book = bookService.getBookById(bookId);
+		userService.getUserById(userId);
 
 		if (!book.isAvailable()) {
 			throw new BookUnavailableException("Book is not available");
@@ -29,13 +40,14 @@ public class RentalManager {
 		String issueDate = LocalDate.now().toString();
 		Rental rental = new Rental(rentalId, bookId, userId, issueDate);
 
-		bookManager.updateBookAvailability(bookId, false);
-		FileUtil.appendToFile(FILE_PATH, rental.toCSV());
-		System.out.println("Book issued successfully. Rental ID: " + rentalId);
+		bookService.updateBookAvailability(bookId, false);
+		rentalRepository.append(rental);
+		return rentalId;
 	}
 
+	@Override
 	public void returnBook(String rentalId) throws LibraryException {
-		List<Rental> rentals = getAllRentals();
+		List<Rental> rentals = rentalRepository.findAll();
 		Rental rentalToReturn = null;
 
 		for (Rental rental : rentals) {
@@ -54,15 +66,15 @@ public class RentalManager {
 		}
 
 		rentalToReturn.setReturnDate(LocalDate.now().toString());
-		bookManager.updateBookAvailability(rentalToReturn.getBookId(), true);
-		writeAllRentals(rentals);
-		System.out.println("Book returned successfully");
+		bookService.updateBookAvailability(rentalToReturn.getBookId(), true);
+		rentalRepository.saveAll(rentals);
 	}
 
+	@Override
 	public List<Rental> getRentalHistory(String userId) {
 		List<Rental> history = new ArrayList<>();
 
-		for (Rental rental : getAllRentals()) {
+		for (Rental rental : rentalRepository.findAll()) {
 			if (rental.getUserId().equals(userId)) {
 				history.add(rental);
 			}
@@ -71,24 +83,8 @@ public class RentalManager {
 		return history;
 	}
 
+	@Override
 	public List<Rental> getAllRentals() {
-		List<Rental> rentals = new ArrayList<>();
-		List<String> lines = FileUtil.readFile(FILE_PATH);
-
-		for (String line : lines) {
-			if (!line.trim().isEmpty()) {
-				rentals.add(Rental.fromCSV(line));
-			}
-		}
-
-		return rentals;
-	}
-
-	private void writeAllRentals(List<Rental> rentals) {
-		List<String> csvLines = new ArrayList<>();
-		for (Rental rental : rentals) {
-			csvLines.add(rental.toCSV());
-		}
-		FileUtil.writeFile(FILE_PATH, csvLines);
+		return rentalRepository.findAll();
 	}
 }

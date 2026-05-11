@@ -28,13 +28,4 @@ public class User {
 			this.name = name;
 		}
 	}
-
-	public String toCSV() {
-		return userId + "," + name + "," + idCardNumber;
-	}
-
-	public static User fromCSV(String csv) {
-		String[] parts = csv.split(",");
-		return new User(parts[0], parts[1], parts[2]);
-	}
 }

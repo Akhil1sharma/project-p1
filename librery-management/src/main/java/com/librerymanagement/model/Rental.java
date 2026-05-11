@@ -46,16 +46,8 @@ public class Rental {
 		this.status = "RETURNED";
 	}
 
-	public String toCSV() {
-		String safeReturnDate = returnDate == null ? "NULL" : returnDate;
-		return rentalId + "," + bookId + "," + userId + "," + issueDate + "," + safeReturnDate + "," + status;
-	}
-
-	public static Rental fromCSV(String csv) {
-		String[] parts = csv.split(",");
-		Rental rental = new Rental(parts[0], parts[1], parts[2], parts[3]);
-		rental.returnDate = "NULL".equals(parts[4]) ? null : parts[4];
-		rental.status = parts[5];
-		return rental;
+	public void applyStoredState(String returnDate, String status) {
+		this.returnDate = returnDate;
+		this.status = status;
 	}
 }

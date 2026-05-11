@@ -1,20 +1,29 @@
-package com.librerymanagement.manager;
+package com.librerymanagement.service;
 
 import com.librerymanagement.exception.BookNotFoundException;
 import com.librerymanagement.exception.BookUnavailableException;
 import com.librerymanagement.exception.InvalidOperationException;
 import com.librerymanagement.exception.LibraryException;
 import com.librerymanagement.model.Book;
-import com.librerymanagement.util.FileUtil;
+import com.librerymanagement.repository.BookRepository;
+import com.librerymanagement.repository.FileBookRepository;
 import com.librerymanagement.util.IDGenerator;
 import com.librerymanagement.util.Validator;
-import java.util.ArrayList;
 import java.util.List;
 
-public class BookManager {
-	private static final String FILE_PATH = "data/books.txt";
+public class BookServiceImpl implements BookService {
+	private final BookRepository repository;
 
-	public void addBook(String title, String author, String category) throws LibraryException {
+	public BookServiceImpl() {
+		this(new FileBookRepository());
+	}
+
+	public BookServiceImpl(BookRepository repository) {
+		this.repository = repository;
+	}
+
+	@Override
+	public String addBook(String title, String author, String category) throws LibraryException {
 		if (!Validator.isNotEmpty(title)) {
 			throw new InvalidOperationException("Title cannot be empty");
 		}
@@ -27,12 +36,14 @@ public class BookManager {
 
 		String bookId = IDGenerator.generateBookId();
 		Book book = new Book(bookId, title, author, category);
-		FileUtil.appendToFile(FILE_PATH, book.toCSV());
-		System.out.println("Book added successfully. ID: " + bookId);
+		repository.append(book);
+		return bookId;
 	}
 
-	public void updateBook(String bookId, String newTitle, String newAuthor, String newCategory) throws LibraryException {
-		List<Book> books = getAllBooks();
+	@Override
+	public void updateBook(String bookId, String newTitle, String newAuthor, String newCategory)
+			throws LibraryException {
+		List<Book> books = repository.findAll();
 		boolean found = false;
 
 		for (Book book : books) {
@@ -49,12 +60,12 @@ public class BookManager {
 			throw new BookNotFoundException("Book not found: " + bookId);
 		}
 
-		writeAllBooks(books);
-		System.out.println("Book updated successfully");
+		repository.saveAll(books);
 	}
 
+	@Override
 	public void deleteBook(String bookId) throws LibraryException {
-		List<Book> books = getAllBooks();
+		List<Book> books = repository.findAll();
 		Book bookToDelete = null;
 
 		for (Book book : books) {
@@ -73,12 +84,12 @@ public class BookManager {
 		}
 
 		books.remove(bookToDelete);
-		writeAllBooks(books);
-		System.out.println("Book deleted successfully");
+		repository.saveAll(books);
 	}
 
+	@Override
 	public Book getBookById(String bookId) throws LibraryException {
-		for (Book book : getAllBooks()) {
+		for (Book book : repository.findAll()) {
 			if (book.getBookId().equals(bookId)) {
 				return book;
 			}
@@ -86,24 +97,17 @@ public class BookManager {
 		throw new BookNotFoundException("Book not found: " + bookId);
 	}
 
+	@Override
 	public List<Book> getAllBooks() {
-		List<Book> books = new ArrayList<>();
-		List<String> lines = FileUtil.readFile(FILE_PATH);
-
-		for (String line : lines) {
-			if (!line.trim().isEmpty()) {
-				books.add(Book.fromCSV(line));
-			}
-		}
-
-		return books;
+		return repository.findAll();
 	}
 
+	@Override
 	public List<Book> searchByTitle(String query) {
-		List<Book> results = new ArrayList<>();
+		List<Book> results = new java.util.ArrayList<>();
 		String normalized = query == null ? "" : query.toLowerCase();
 
-		for (Book book : getAllBooks()) {
+		for (Book book : repository.findAll()) {
 			if (book.getTitle().toLowerCase().contains(normalized)) {
 				results.add(book);
 			}
@@ -112,11 +116,12 @@ public class BookManager {
 		return results;
 	}
 
+	@Override
 	public List<Book> searchByCategory(String category) {
-		List<Book> results = new ArrayList<>();
+		List<Book> results = new java.util.ArrayList<>();
 		String normalized = category == null ? "" : category.toLowerCase();
 
-		for (Book book : getAllBooks()) {
+		for (Book book : repository.findAll()) {
 			if (book.getCategory().toLowerCase().contains(normalized)) {
 				results.add(book);
 			}
@@ -125,12 +130,14 @@ public class BookManager {
 		return results;
 	}
 
+	@Override
 	public boolean isAvailable(String bookId) throws LibraryException {
 		return getBookById(bookId).isAvailable();
 	}
 
+	@Override
 	public void updateBookAvailability(String bookId, boolean available) throws LibraryException {
-		List<Book> books = getAllBooks();
+		List<Book> books = repository.findAll();
 		boolean found = false;
 
 		for (Book book : books) {
@@ -145,14 +152,6 @@ public class BookManager {
 			throw new BookNotFoundException("Book not found: " + bookId);
 		}
 
-		writeAllBooks(books);
-	}
-
-	private void writeAllBooks(List<Book> books) {
-		List<String> csvLines = new ArrayList<>();
-		for (Book book : books) {
-			csvLines.add(book.toCSV());
-		}
-		FileUtil.writeFile(FILE_PATH, csvLines);
+		repository.saveAll(books);
 	}
 }

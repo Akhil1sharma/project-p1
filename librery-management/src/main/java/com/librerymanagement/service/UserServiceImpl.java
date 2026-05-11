@@ -1,19 +1,28 @@
-package com.librerymanagement.manager;
+package com.librerymanagement.service;
 
 import com.librerymanagement.exception.InvalidOperationException;
 import com.librerymanagement.exception.LibraryException;
 import com.librerymanagement.exception.UserNotFoundException;
 import com.librerymanagement.model.User;
-import com.librerymanagement.util.FileUtil;
+import com.librerymanagement.repository.FileUserRepository;
+import com.librerymanagement.repository.UserRepository;
 import com.librerymanagement.util.IDGenerator;
 import com.librerymanagement.util.Validator;
-import java.util.ArrayList;
 import java.util.List;
 
-public class UserManager {
-	private static final String FILE_PATH = "data/users.txt";
+public class UserServiceImpl implements UserService {
+	private final UserRepository repository;
 
-	public void registerUser(String name, String idCardNumber) throws LibraryException {
+	public UserServiceImpl() {
+		this(new FileUserRepository());
+	}
+
+	public UserServiceImpl(UserRepository repository) {
+		this.repository = repository;
+	}
+
+	@Override
+	public String registerUser(String name, String idCardNumber) throws LibraryException {
 		if (!Validator.isNotEmpty(name)) {
 			throw new InvalidOperationException("Name cannot be empty");
 		}
@@ -23,12 +32,13 @@ public class UserManager {
 
 		String userId = IDGenerator.generateUserId();
 		User user = new User(userId, name, idCardNumber);
-		FileUtil.appendToFile(FILE_PATH, user.toCSV());
-		System.out.println("User registered successfully. ID: " + userId);
+		repository.append(user);
+		return userId;
 	}
 
+	@Override
 	public User getUserById(String userId) throws LibraryException {
-		for (User user : getAllUsers()) {
+		for (User user : repository.findAll()) {
 			if (user.getUserId().equals(userId)) {
 				return user;
 			}
@@ -36,16 +46,8 @@ public class UserManager {
 		throw new UserNotFoundException("User not found: " + userId);
 	}
 
+	@Override
 	public List<User> getAllUsers() {
-		List<User> users = new ArrayList<>();
-		List<String> lines = FileUtil.readFile(FILE_PATH);
-
-		for (String line : lines) {
-			if (!line.trim().isEmpty()) {
-				users.add(User.fromCSV(line));
-			}
-		}
-
-		return users;
+		return repository.findAll();
 	}
 }

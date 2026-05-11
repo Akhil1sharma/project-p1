@@ -56,15 +56,4 @@ public class Book {
 	public void setAvailable(boolean available) {
 		this.isAvailable = available;
 	}
-
-	public String toCSV() {
-		return bookId + "," + title + "," + author + "," + category + "," + isAvailable;
-	}
-
-	public static Book fromCSV(String csv) {
-		String[] parts = csv.split(",");
-		Book book = new Book(parts[0], parts[1], parts[2], parts[3]);
-		book.isAvailable = Boolean.parseBoolean(parts[4]);
-		return book;
-	}
 }
